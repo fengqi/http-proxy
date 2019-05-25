@@ -29,7 +29,7 @@ func main() {
 
 	// 初始化
 	proxy := &Proxy{
-		bufPool: bpool.NewBytePool(1024*1024, 32*1024),
+		bufPool: bpool.NewBytePool(5*1024*1024, 32*1024),
 		addr:    *addr,
 		port:    *port,
 		auth:    *auth,
