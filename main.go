@@ -21,8 +21,8 @@ type Proxy struct {
 }
 
 func main() {
-	addr := flag.String("addr", "0.0.0.0", "监听地址， 默认 0.0.0.0")
-	port := flag.String("port", "8998", "监听端口， 默认 8888")
+	addr := flag.String("addr", "127.0.0.1", "监听地址， 默认 127.0.0.1")
+	port := flag.String("port", "8998", "监听端口， 默认 8998")
 	auth := flag.String("auth", "", "验证")
 	debug := flag.Bool("debug", false, "开启调试模式")
 	flag.Parse()
@@ -50,7 +50,7 @@ func main() {
 	}
 }
 
-// 运行代理
+// 运行代理，处理HTTP和HTTPS的代理请求
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 不是代理流量
 	if len(r.URL.Host) == 0 {
@@ -169,41 +169,9 @@ func (p *Proxy) HTTPs(w http.ResponseWriter, r *http.Request) {
 
 // buffer 池复制
 func (p *Proxy) Copy(dst io.Writer, src io.Reader) (written int64, err error) {
-	if wt, ok := src.(io.WriterTo); ok {
-		return wt.WriteTo(dst)
-	}
-
-	if rt, ok := dst.(io.ReaderFrom); ok {
-		return rt.ReadFrom(src)
-	}
-
 	buf := p.bufPool.Get()
 	defer p.bufPool.Put(buf)
-	for {
-		nr, er := src.Read(buf)
-		if nr > 0 {
-			nw, ew := dst.Write(buf[0:nr])
-			if nw > 0 {
-				written += int64(nw)
-			}
-			if ew != nil {
-				err = ew
-				break
-			}
-			if nr != nw {
-				err = io.ErrShortWrite
-				break
-			}
-		}
-		if er != nil {
-			if er != io.EOF {
-				err = er
-			}
-			break
-		}
-	}
-
-	return written, err
+	return io.CopyBuffer(dst, src, buf)
 }
 
 // log.Printf
